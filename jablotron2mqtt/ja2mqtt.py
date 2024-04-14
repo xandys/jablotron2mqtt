@@ -38,9 +38,10 @@ class Jablotron2mqtt(object):
 
 	def __init__(self, jablotron_port="/dev/ttyUSB0", 
 			mqtt_host="127.0.0.1", mqtt_port=1883,
-			mqtt_topic="alarm"):
+			mqtt_topic="alarm",
+			mqtt_username="",mqtt_password=""):
 
-		self._setup_mqtt(mqtt_host, mqtt_port, mqtt_topic)
+		self._setup_mqtt(mqtt_host, mqtt_port, mqtt_topic, mqtt_username, mqtt_password)
 		self._setup_jablotron(jablotron_port)
 
 	def __enter__(self):
