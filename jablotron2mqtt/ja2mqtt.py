@@ -11,11 +11,11 @@ from jablotron.jablotron6x import remove_duplicities
 # translates modes from jablotron to modes
 # expected by home assistant mqtt panel
 MODE_MAP = [
-  ('armed_home', lambda mode: mode == 'armedA'),
-  ('armed_away', lambda mode: mode.startswith('armed')),
-  ('pending', lambda mode: mode.startswith('arming')),
-  ('triggered', lambda mode: 'alarm' in mode),
-  ('disarmed', lambda mode: True),
+	('armed_home', lambda mode: mode == 'armedA'),
+	('armed_away', lambda mode: mode.startswith('armed')),
+	('pending', lambda mode: mode.startswith('arming')),
+	('triggered', lambda mode: 'alarm' in mode),
+	('disarmed', lambda mode: True),
 ]
 
 class Jablotron2mqtt(object):
@@ -30,15 +30,15 @@ class Jablotron2mqtt(object):
 	def _msg_handlers(self):
 		return {
 			"key/press": self.on_mqtt_key_press
-	    	}
+			}
 
 	@property
 	def _mqtt_topics(self):
 		return [ self.topic + "/" + t  for t in self._msg_handlers.keys() ]
 
 	def __init__(self, jablotron_port="/dev/ttyUSB0", 
-		     mqtt_host="127.0.0.1", mqtt_port=1883,
-		     mqtt_topic="alarm"):
+			mqtt_host="127.0.0.1", mqtt_port=1883,
+			mqtt_topic="alarm"):
 
 		self._setup_mqtt(mqtt_host, mqtt_port, mqtt_topic)
 		self._setup_jablotron(jablotron_port)
@@ -52,14 +52,16 @@ class Jablotron2mqtt(object):
 		self.alarm.__exit__(exc_type, exc_val, exc_tb)
 
 
-	def _setup_mqtt(self, host, port, topic):
+	def _setup_mqtt(self, host, port, topic, username, password):
 
 		self.topic = topic
 
-		self.mqttc=mqtt.Client()
+		self.mqttc=mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, protocol=mqtt.MQTTv5, client_id="jablotron")
 		
 		logger = logging.getLogger(__name__)
 		self.mqttc.enable_logger(logger)
+
+		self.mqttc.username_pw_set(username, password)
 
 		self.mqttc.on_connect=self.on_mqtt_connect
 		self.mqttc.on_message=self.on_mqtt_message
@@ -67,7 +69,7 @@ class Jablotron2mqtt(object):
 
 		self.mqttc.will_set("{0}/online".format(self.topic), 0, retain=True)
 
-		self.mqttc.connect(host, port=port, keepalive=60)
+		self.mqttc.connect(host, port=int(port), keepalive=60)
 
 	def _setup_jablotron(self, port):
 		self.alarm = Jablotron6x(port)
@@ -88,7 +90,7 @@ class Jablotron2mqtt(object):
 		info = self.mqttc.publish("{0}/{1}".format(self.topic, topic), msg, retain=retain)
 		return info.rc == mqtt.MQTT_ERR_SUCCESS
 
-	def on_mqtt_connect(self, client, userdata, flags, rc):
+	def on_mqtt_connect(self, client, userdata, flags, rc, properties):
 		for topic in self._mqtt_topics:
 			logging.debug("Subscribed: " + topic)
 			client.subscribe(topic)
@@ -117,7 +119,7 @@ class Jablotron2mqtt(object):
 		logging.debug("Pressing keys: "+msg)
 		try:
 			self.alarm.send_keys(msg)
-		except ValueError, e:
+		except ValueError as e:
 			self.publish("key", "Error: invalid key")
 
 	def on_alarm_message(self, buf):
