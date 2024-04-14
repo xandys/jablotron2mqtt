@@ -101,7 +101,7 @@ class Jablotron2mqtt(object):
 		self.publish("ip", ip, retain=True)
 		logging.info("Connected to mqtt ...")
 
-	def on_mqtt_disconnect(self, client, userdata, rc):
+	def on_mqtt_disconnect(self, client, userdata, flags, rc, properties):
 		logging.warning("Disconnected from mqtt ...")
 		self.mqtt_connected=False
 
