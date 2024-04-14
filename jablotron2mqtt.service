@@ -3,7 +3,7 @@ Description=Jablotron JA-6x bridge to mqtt
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/systemd-cat -t jablotron2mqtt -p debug /usr/bin/python /usr/local/lib/python2.7/dist-packages/jablotron2mqtt/main.py --host mqtt --serial-port /dev/ttyUSB0 --topic alarm -v -d
+ExecStart=/usr/bin/systemd-cat -t jablotron2mqtt -p debug /usr/bin/python /usr/local/lib/python3.11/dist-packages/jablotron2mqtt/main.py --host mqtt --serial-port /dev/ttyUSB0 --topic alarm -v -d
 Restart=always
 
 [Install]
