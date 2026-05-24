@@ -5,7 +5,7 @@ import logging
 import paho.mqtt.client as mqtt
 from time import sleep
 from jablotron import Jablotron6x
-from jablotron.jablotron6x import remove_duplicities
+from jablotron.jablotron6x import RemoveDuplicities
 
 
 # translates modes from jablotron to modes
@@ -20,12 +20,6 @@ MODE_MAP = [
 
 class Jablotron2mqtt(object):
 
-	alarm=None
-	mqttc=None
-	topic=""
-	mqtt_connected=False
-	reconnect_timeout=30
-
 	@property
 	def _msg_handlers(self):
 		return {
@@ -36,10 +30,16 @@ class Jablotron2mqtt(object):
 	def _mqtt_topics(self):
 		return [ self.topic + "/" + t  for t in self._msg_handlers.keys() ]
 
-	def __init__(self, jablotron_port="/dev/ttyUSB0", 
+	def __init__(self, jablotron_port="/dev/ttyUSB0",
 			mqtt_host="127.0.0.1", mqtt_port=1883,
 			mqtt_topic="alarm",
 			mqtt_username="",mqtt_password=""):
+
+		self.alarm = None
+		self.mqttc = None
+		self.topic = ""
+		self.mqtt_connected = False
+		self.reconnect_timeout = 30
 
 		self._setup_mqtt(mqtt_host, mqtt_port, mqtt_topic, mqtt_username, mqtt_password)
 		self._setup_jablotron(jablotron_port)
@@ -74,7 +74,7 @@ class Jablotron2mqtt(object):
 
 	def _setup_jablotron(self, port):
 		self.alarm = Jablotron6x(port)
-		self.alarm.register_callback(remove_duplicities, mask=[0xe0])
+		self.alarm.register_callback(RemoveDuplicities(), mask=[0xe0])
 		self.alarm.register_callback(self.on_alarm_message)
 
 		self.alarm.on_key_press = self.on_alarm_key
@@ -82,7 +82,7 @@ class Jablotron2mqtt(object):
 		self.alarm.on_display_change = self.on_alarm_display
 		self.alarm.on_led_change = self.on_alarm_led
 
-		self.alarm.connect()
+		self.alarm.__enter__()
 
 	def publish(self, topic, msg, retain=False):
 		if not self.mqtt_connected:
@@ -108,7 +108,7 @@ class Jablotron2mqtt(object):
 	def on_mqtt_message(self, client, userdata, msg):
 		logging.debug("Message received {0}: {1}".format(msg.topic, msg.payload))
 		if msg.topic not in self._mqtt_topics:
-			print("{0} not in {1}".format(msg.topic, self._mqtt_topics))
+			logging.warning("{0} not in {1}".format(msg.topic, self._mqtt_topics))
 			return
 
 		topic = msg.topic[len(self.topic)+1:]
@@ -117,10 +117,11 @@ class Jablotron2mqtt(object):
 		self._msg_handlers[topic](client, msg.payload)
 
 	def on_mqtt_key_press(self, client, msg):
-		logging.debug("Pressing keys: "+msg)
+		key = msg.decode('utf-8')
+		logging.debug("Pressing keys: " + key)
 		try:
-			self.alarm.send_keys(msg)
-		except ValueError as e:
+			self.alarm.send_keys(key)
+		except ValueError:
 			self.publish("key", "Error: invalid key")
 
 	def on_alarm_message(self, buf):
@@ -152,19 +153,19 @@ class Jablotron2mqtt(object):
 
 	def loop_forever(self):
 
-		time_disconnected=0
+		time_disconnected = 0
 
-		while True :
+		while True:
 			self.mqttc.loop(timeout=0.1)
+			self.alarm.loop()
 			if self.mqtt_connected:
-				self.alarm.loop()
-				time_disconnected=0
+				time_disconnected = 0
 			else:
+				time_disconnected += 0.1
 				if time_disconnected > self.reconnect_timeout:
 					logging.info("Reconnecting to mqtt ...")
 					self.mqttc.reconnect()
-					time_disconnected=0
-				time_disconnected+=0.1
+					time_disconnected = 0
 				sleep(0.1)
 
 
