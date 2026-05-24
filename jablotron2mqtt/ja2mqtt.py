@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-import sys
 import logging
 import paho.mqtt.client as mqtt
 from time import sleep
@@ -20,16 +19,6 @@ MODE_MAP = [
 
 class Jablotron2mqtt(object):
 
-	@property
-	def _msg_handlers(self):
-		return {
-			"key/press": self.on_mqtt_key_press
-			}
-
-	@property
-	def _mqtt_topics(self):
-		return [ self.topic + "/" + t  for t in self._msg_handlers.keys() ]
-
 	def __init__(self, jablotron_port="/dev/ttyUSB0",
 			mqtt_host="127.0.0.1", mqtt_port=1883,
 			mqtt_topic="alarm",
@@ -40,9 +29,15 @@ class Jablotron2mqtt(object):
 		self.topic = ""
 		self.mqtt_connected = False
 		self.reconnect_timeout = 30
+		self._cached_mode = None
+		self._cached_display = None
+		self._cached_leds = {}
 
 		self._setup_mqtt(mqtt_host, mqtt_port, mqtt_topic, mqtt_username, mqtt_password)
 		self._setup_jablotron(jablotron_port)
+
+		self._msg_handlers = {"key/press": self.on_mqtt_key_press}
+		self._mqtt_topics = [self.topic + "/" + t for t in self._msg_handlers]
 
 	def __enter__(self):
 		return self
@@ -92,13 +87,22 @@ class Jablotron2mqtt(object):
 		return info.rc == mqtt.MQTT_ERR_SUCCESS
 
 	def on_mqtt_connect(self, client, userdata, flags, rc, properties):
+		if rc.value != 0:
+			logging.error("MQTT connection refused: %s", rc)
+			return
 		for topic in self._mqtt_topics:
 			logging.debug("Subscribed: " + topic)
 			client.subscribe(topic)
-		self.mqtt_connected=True
+		self.mqtt_connected = True
 		self.publish("online", 1, retain=True)
-		ip=client.socket().getsockname()[0]
+		ip = client.socket().getsockname()[0]
 		self.publish("ip", ip, retain=True)
+		if self._cached_mode is not None:
+			self.publish("mode", self._cached_mode, retain=True)
+		if self._cached_display is not None:
+			self.publish("display", self._cached_display, retain=True)
+		for name, val in self._cached_leds.items():
+			self.publish("leds/{0}".format(name), val, retain=True)
 		logging.info("Connected to mqtt ...")
 
 	def on_mqtt_disconnect(self, client, userdata, flags, rc, properties):
@@ -117,7 +121,11 @@ class Jablotron2mqtt(object):
 		self._msg_handlers[topic](client, msg.payload)
 
 	def on_mqtt_key_press(self, client, msg):
-		key = msg.decode('utf-8')
+		try:
+			key = msg.decode('utf-8')
+		except UnicodeDecodeError:
+			self.publish("key", "Error: invalid payload")
+			return
 		logging.debug("Pressing keys: " + key)
 		try:
 			self.alarm.send_keys(key)
@@ -138,17 +146,20 @@ class Jablotron2mqtt(object):
 		logging.debug("Alarm mode changed: " + mode)
 		for mqtt_mode, func in MODE_MAP:
 			if func(mode):
-				break;
+				break
 		logging.debug("Jablotron mode %s translated to mqtt mode %s" % (mode, mqtt_mode))
+		self._cached_mode = mqtt_mode
 		self.publish("mode", mqtt_mode, retain=True)
 
 	def on_alarm_display(self, text):
 		logging.debug("Alarm display changed: " + text)
+		self._cached_display = text
 		self.publish("display", text, retain=True)
 
 	def on_alarm_led(self, **kwargs):
 		for (key, val) in kwargs.items():
 			logging.debug("Alarm led {0} changed to: {1}".format(key, "on" if val else "off"))
+			self._cached_leds[key] = int(val)
 			self.publish("leds/{0}".format(key), int(val), retain=True)
 
 	def loop_forever(self):
