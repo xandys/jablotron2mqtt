@@ -1,0 +1,40 @@
+services:
+
+  jablotron2mqtt:
+    image: python:3.11-slim
+    container_name: jablotron2mqtt
+    restart: unless-stopped
+    environment:
+      # IP address of the Waveshare RS232/485-TO-WIFI-POE-ETH device on your LAN
+      WAVESHARE_HOST: "192.168.1.100"
+      # TCP port the device listens on (default transparent-mode port)
+      WAVESHARE_PORT: "8899"
+      # MQTT broker
+      MQTT_HOST: "192.168.1.x"
+      MQTT_PORT: "1883"
+      MQTT_TOPIC: alarm
+      # Leave blank if the broker has no authentication
+      MQTT_USERNAME: ""
+      MQTT_PASSWORD: ""
+    command:
+      - bash
+      - -c
+      - |
+        set -e
+        apt-get update -qq
+        apt-get install -y --no-install-recommends socat git
+        rm -rf /var/lib/apt/lists/*
+        git clone https://github.com/xandys/jablotron2mqtt.git /app
+        pip install --no-cache-dir -r /app/requirements.txt
+        socat PTY,link=/dev/ttyRS485,raw,echo=0 \
+              TCP:$$WAVESHARE_HOST:$$WAVESHARE_PORT,retry,interval=5,forever &
+        for i in $$(seq 1 30); do [ -e /dev/ttyRS485 ] && break; sleep 1; done
+        [ -e /dev/ttyRS485 ] || { echo "PTY did not appear"; exit 1; }
+        exec python /app/jablotron2mqtt/main.py \
+          --serial-port /dev/ttyRS485 \
+          --host $$MQTT_HOST \
+          --mqtt-port $$MQTT_PORT \
+          --topic $$MQTT_TOPIC \
+          $${MQTT_USERNAME:+--username $$MQTT_USERNAME} \
+          $${MQTT_PASSWORD:+--password $$MQTT_PASSWORD} \
+          -v
