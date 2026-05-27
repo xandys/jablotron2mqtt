@@ -24,7 +24,8 @@ services:
         apt-get update -qq
         apt-get install -y --no-install-recommends socat git
         rm -rf /var/lib/apt/lists/*
-        git clone https://github.com/xandys/jablotron2mqtt.git /app
+        rm -rf /app
+        git clone --branch dev https://github.com/xandys/jablotron2mqtt.git /app
         pip install --no-cache-dir -r /app/requirements.txt
         socat PTY,link=/dev/ttyRS485,raw,echo=0 \
               TCP:$$WAVESHARE_HOST:$$WAVESHARE_PORT,retry,interval=5,forever &
