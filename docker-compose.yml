@@ -4,6 +4,7 @@ services:
     image: python:3.11-slim
     container_name: jablotron2mqtt
     restart: unless-stopped
+    network_mode: host
     environment:
       # IP address of the Waveshare RS232/485-TO-WIFI-POE-ETH device on your LAN
       WAVESHARE_HOST: "192.168.1.100"
