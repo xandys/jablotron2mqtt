@@ -64,7 +64,8 @@ class Jablotron6x(object):
     def _register_internal_callbacks(self):
         for mask in list(KEY_MAP.values()):
             self.register_callback(self._handle_on_key_press, [mask])
-        self.register_callback(self._handle_status_update, [0xe0])
+        for record_type in [0xe0, 0xe1, 0xe2]:
+            self.register_callback(self._handle_status_update, [record_type])
 
     def __enter__(self):
         self.connect()

@@ -7,6 +7,33 @@ from jablotron import Jablotron6x
 from jablotron.jablotron6x import RemoveDuplicities
 
 
+E3_EVENT_TYPES = {
+	0x04: 'silent_alarm',   0x05: 'tamper_alarm',  0x08: 'armed',
+	0x09: 'disarmed',       0x0e: 'exit_programming',
+	0x41: 'service_start',  0x42: 'service_end',
+	0x44: 'message_1',      0x46: 'message_2',     0x48: 'message_3',
+	0x50: 'tamper_ok',
+}
+
+E3_SOURCES = {
+	0x00: 'panel',   0x1b: 'phone',   0x1c: 'serial',
+	0x21: 'sensor_1', 0x22: 'sensor_2', 0x7c: 'serial_silent',
+}
+
+E9_EVENT_TYPES = {
+	0x01: 'immediate_alarm',    0x02: 'delayed_alarm',      0x03: 'fire_alarm',
+	0x04: 'silent_alarm',       0x05: 'attempts_exceeded',  0x06: 'post_power_alarm',
+	0x07: 'tamper',             0x08: 'tamper_ok',          0x09: 'alarm_timeout',
+	0x0a: 'user_cancel',        0x0b: 'armed',              0x0c: 'disarmed',
+	0x0d: 'partially_armed',    0x0e: 'armed_no_code',      0x0f: 'comm_failure',
+	0x10: 'comm_ok',            0x11: 'malfunction',        0x12: 'malfunction_ok',
+	0x13: 'ac_off',             0x14: 'ac_disconnected',    0x15: 'ac_ok',
+	0x16: 'battery_low',        0x17: 'battery_ok',         0x18: 'service_start',
+	0x19: 'service_end',        0x1a: 'remote_start',       0x1b: 'remote_end',
+	0x1c: 'jamming',            0x1d: 'internal_comm_fail', 0x1e: 'internal_comm_ok',
+	0x1f: 'test',
+}
+
 # translates modes from jablotron to modes
 # expected by home assistant mqtt panel
 MODE_MAP = [
@@ -155,6 +182,10 @@ class Jablotron2mqtt(object):
 			self._parse_e6(buf)
 		elif buf[0] == 0xec:
 			self._parse_ec(buf)
+		elif buf[0] in (0xe3, 0xe7):
+			self._parse_e3(buf)
+		elif buf[0] == 0xe9:
+			self._parse_e9(buf)
 		return False   # pass the message to other registered handlers
 
 	def _parse_e6(self, buf):
@@ -196,6 +227,30 @@ class Jablotron2mqtt(object):
 
 		logging.debug("GSM config: type 0x%02x id %d = %r", msg_type, msg_id, value)
 		self.publish("config/gsm/%02x/%d" % (msg_type, msg_id), value, retain=True)
+
+	def _parse_e3(self, buf):
+		# Format: [e3/e7] [day BCD] [month BCD] [hour BCD] [min BCD] [event_type] [source] [checksum] [ff]
+		if len(buf) < 9:
+			return
+		day    = (buf[1] >> 4) * 10 + (buf[1] & 0x0f)
+		month  = (buf[2] >> 4) * 10 + (buf[2] & 0x0f)
+		hour   = (buf[3] >> 4) * 10 + (buf[3] & 0x0f)
+		minute = (buf[4] >> 4) * 10 + (buf[4] & 0x0f)
+		event_name  = E3_EVENT_TYPES.get(buf[5], '0x%02x' % buf[5])
+		source_name = E3_SOURCES.get(buf[6],    '0x%02x' % buf[6])
+		msg = "%s %s %02d.%02d %02d:%02d" % (event_name, source_name, day, month, hour, minute)
+		logging.debug("Event: %s", msg)
+		self.publish("event", msg)
+
+	def _parse_e9(self, buf):
+		# Format: [e9] [event_type] [source] [rf_signal] [checksum] [ff]
+		if len(buf) < 6:
+			return
+		event_name = E9_EVENT_TYPES.get(buf[1], '0x%02x' % buf[1])
+		source     = buf[2]
+		rf_signal  = buf[3]
+		logging.debug("Sensor %02x: %s rf=%d", source, event_name, rf_signal)
+		self.publish("sensor/%02x" % source, "%s rf=%d" % (event_name, rf_signal))
 
 	def on_alarm_key(self, key):
 		logging.debug("Alarm registered key press: " + key)
