@@ -9,6 +9,7 @@ from time import sleep
 KEY_MAP = {
     '0': 0x80, '1': 0x81, '2': 0x82, '3': 0x83, '4': 0x84,
     '5': 0x85, '6': 0x86, '7': 0x87, '8': 0x88, '9': 0x89,
+    '*': 0x8A,
     'N': 0x8E, 'F': 0x8F,
 }
 KEY_MAP_INVERSED = {v: k for k, v in list(KEY_MAP.items())}
@@ -32,9 +33,12 @@ LED_MAP = {
 
 # Operational mode mappings
 MODE_MAP = {
-    0x00: 'service mode', 0x20: 'user mode', 0x40: 'disarmed',
-    0x41: 'armed', 0x44: 'tamper alarm', 0x51: 'arming',
-    0x61: 'armedA', 0x63: 'armedB', 0x71: 'armingA', 0x73: 'armingB',
+    0x00: 'service mode', 0x20: 'user mode', 0x23: 'user mode',
+    0x40: 'disarmed',
+    0x41: 'armed', 0x44: 'tamper alarm', 0x45: 'alarm', 0x49: 'entryDelay',
+    0x51: 'arming',
+    0x61: 'armedA', 0x63: 'armedB', 0x69: 'entryDelayB',
+    0x71: 'armingA', 0x73: 'armingB',
 }
 
 EVENT_CONSUMED = True
@@ -165,7 +169,7 @@ class Jablotron6x(object):
             try:
                 text = MODE_MAP[self.mode]
             except KeyError:
-                logging.error("MODE_MAP missing 0x%02x" % self.mode)
+                logging.warning("MODE_MAP missing 0x%02x" % self.mode)
                 text = "Mode 0x%02x" % self.mode
             if self.on_mode_change is not None:
                 self.on_mode_change(text)

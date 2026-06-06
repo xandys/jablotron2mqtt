@@ -39,7 +39,7 @@ E9_EVENT_TYPES = {
 MODE_MAP = [
 	('armed_home', lambda mode: mode == 'armedA'),
 	('armed_away', lambda mode: mode.startswith('armed')),
-	('pending', lambda mode: mode.startswith('arming')),
+	('pending', lambda mode: mode.startswith('arming') or 'Delay' in mode),
 	('triggered', lambda mode: 'alarm' in mode),
 	('disarmed', lambda mode: True),
 ]
@@ -178,7 +178,9 @@ class Jablotron2mqtt(object):
 		msg=" ".join(["%02x" % c for c in buf])
 		logging.debug("Alarm message: " + msg)
 		self.publish("raw", msg)
-		if buf[0] == 0xe6:
+		if buf[0] == 0xe5:
+			self._parse_e5(buf)
+		elif buf[0] == 0xe6:
 			self._parse_e6(buf)
 		elif buf[0] == 0xec:
 			self._parse_ec(buf)
@@ -188,14 +190,46 @@ class Jablotron2mqtt(object):
 			self._parse_e9(buf)
 		return False   # pass the message to other registered handlers
 
-	def _parse_e6(self, buf):
-		# Format: e6 [?] [setting_id] [value] [checksum] [0xff]
-		if len(buf) < 6:
+	def _parse_e5(self, buf):
+		# Format: e5 [month] [day] [hour] [minute] [checksum] [0xff]
+		if len(buf) < 7:
 			return
-		setting_id = buf[2]
-		value = buf[3]
-		logging.debug("Switchboard config: setting %d = %d", setting_id, value)
-		self.publish("config/switchboard/%d" % setting_id, value, retain=True)
+		msg = "%02d.%02d %02d:%02d" % (buf[2], buf[1], buf[3], buf[4])
+		logging.debug("Alarm time: %s", msg)
+		self.publish("time", msg, retain=True)
+
+	def _parse_e6(self, buf):
+		# Format: e6 [subtype] [data...] [checksum] [0xff]
+		if len(buf) < 5:
+			return
+		subtype = buf[1]
+		data = buf[2:-2]
+
+		if subtype in (0x02, 0x03):
+			if len(data) < 2:
+				return
+			logging.debug("Switchboard config: %02x/%d = %d", subtype, data[0], data[1])
+			self.publish("config/switchboard/%02x/%d" % (subtype, data[0]), data[1], retain=True)
+		elif subtype == 0x06:
+			if len(data) < 3:
+				return
+			if len(data) == 3:
+				# [group, idx, value]
+				logging.debug("Switchboard config: 06/%d/%d = %d", data[0], data[1], data[2])
+				self.publish("config/switchboard/06/%d/%d" % (data[0], data[1]), data[2], retain=True)
+			else:
+				# [group, block, idx, value(s)...]
+				values = ' '.join('%02x' % b for b in data[3:])
+				logging.debug("Switchboard config: 06/%d/%d/%d = %s", data[0], data[1], data[2], values)
+				self.publish("config/switchboard/06/%d/%d/%d" % (data[0], data[1], data[2]), values, retain=True)
+		elif subtype == 0x04:
+			value = ' '.join('%02x' % b for b in data)
+			logging.debug("Switchboard config: 04 = %s", value)
+			self.publish("config/switchboard/04", value, retain=True)
+		else:
+			value = ' '.join('%02x' % b for b in data)
+			logging.debug("Switchboard config: %02x = %s", subtype, value)
+			self.publish("config/switchboard/%02x" % subtype, value, retain=True)
 
 	def _parse_ec(self, buf):
 		# Format: ec [msg_type] [msg_id] [payload...] [checksum] [0xff]
