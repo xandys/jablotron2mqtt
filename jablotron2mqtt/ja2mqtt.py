@@ -36,7 +36,10 @@ class Jablotron2mqtt(object):
 		self._setup_mqtt(mqtt_host, mqtt_port, mqtt_topic, mqtt_username, mqtt_password)
 		self._setup_jablotron(jablotron_port)
 
-		self._msg_handlers = {"key/press": self.on_mqtt_key_press}
+		self._msg_handlers = {
+			"key/press": self.on_mqtt_key_press,
+			"config/request": self.on_mqtt_config_request,
+		}
 		self._mqtt_topics = [self.topic + "/" + t for t in self._msg_handlers]
 
 	def __enter__(self):
@@ -119,6 +122,18 @@ class Jablotron2mqtt(object):
 		logging.debug("Known topic received ... " + topic)
 
 		self._msg_handlers[topic](client, msg.payload)
+
+	def on_mqtt_config_request(self, client, msg):
+		try:
+			cmd = msg.decode('utf-8').strip().lower()
+		except UnicodeDecodeError:
+			return
+		if cmd in ('gsm', 'all'):
+			logging.debug("Requesting GSM config dump")
+			self.alarm.send([0xec, 0x40, 0x07, 0x36, 0xff])
+		if cmd in ('text', 'all'):
+			logging.debug("Requesting GSM text dump")
+			self.alarm.send([0xec, 0x40, 0x05, 0x19, 0xff])
 
 	def on_mqtt_key_press(self, client, msg):
 		try:
