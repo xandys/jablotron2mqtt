@@ -195,6 +195,8 @@ class Jablotron2mqtt(object):
 			self._parse_e6(buf)
 		elif buf[0] == 0xec:
 			self._parse_ec(buf)
+		elif buf[0] == 0xe8:
+			self._parse_e8(buf)
 		elif buf[0] in (0xe3, 0xe4, 0xe7):
 			self._parse_e3(buf)
 		elif buf[0] == 0xe9:
@@ -287,6 +289,15 @@ class Jablotron2mqtt(object):
 		logging.debug("Event: %s", msg)
 		topic = "event/history" if buf[0] == 0xe4 else "event"
 		self.publish(topic, msg)
+
+	def _parse_e8(self, buf):
+		# Format: e8 [id] [value] ff
+		if len(buf) < 4:
+			return
+		id_ = buf[1]
+		value = buf[2]
+		logging.debug("E8 status: id=0x%02x value=0x%02x", id_, value)
+		self.publish("sensor/e8/%02x" % id_, value)
 
 	def _parse_e9(self, buf):
 		# Format: [e9] [event_type] [source] [rf_signal] [checksum] [ff]
