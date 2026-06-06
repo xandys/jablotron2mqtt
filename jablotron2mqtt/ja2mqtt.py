@@ -136,7 +136,51 @@ class Jablotron2mqtt(object):
 		msg=" ".join(["%02x" % c for c in buf])
 		logging.debug("Alarm message: " + msg)
 		self.publish("raw", msg)
+		if buf[0] == 0xe6:
+			self._parse_e6(buf)
+		elif buf[0] == 0xec:
+			self._parse_ec(buf)
 		return False   # pass the message to other registered handlers
+
+	def _parse_e6(self, buf):
+		# Format: e6 [?] [setting_id] [value] [checksum] [0xff]
+		if len(buf) < 6:
+			return
+		setting_id = buf[2]
+		value = buf[3]
+		logging.debug("Switchboard config: setting %d = %d", setting_id, value)
+		self.publish("config/switchboard/%d" % setting_id, value, retain=True)
+
+	def _parse_ec(self, buf):
+		# Format: ec [msg_type] [msg_id] [payload...] [checksum] [0xff]
+		if len(buf) < 4:
+			return
+		msg_type = buf[1]
+		msg_id = buf[2]
+		payload = bytes(buf[3:-2])
+
+		if msg_type == 0x00:
+			logging.debug("GSM config: list terminator")
+			return
+		elif msg_type == 0x01:
+			parts = payload.split(b'\x00')
+			value = ','.join(p.decode('latin-1') for p in parts if p)
+		elif msg_type == 0x02:
+			value = str(payload[0]) if payload else "0"
+		elif msg_type == 0x03:
+			value = ' '.join('%02x' % b for b in payload)
+		elif msg_type >> 4 == 0x02:
+			base_id = (msg_type & 0x0f) * 100
+			text = payload.rstrip(b'\x00').decode('latin-1', errors='replace')
+			logging.debug("GSM config text: %d/%d = %r", base_id, msg_id, text)
+			self.publish("config/gsm/text/%d/%d" % (base_id, msg_id), text, retain=True)
+			return
+		else:
+			logging.debug("GSM config: unknown msg_type 0x%02x", msg_type)
+			return
+
+		logging.debug("GSM config: type 0x%02x id %d = %r", msg_type, msg_id, value)
+		self.publish("config/gsm/%02x/%d" % (msg_type, msg_id), value, retain=True)
 
 	def on_alarm_key(self, key):
 		logging.debug("Alarm registered key press: " + key)
