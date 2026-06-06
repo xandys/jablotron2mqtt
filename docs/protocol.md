@@ -144,7 +144,27 @@ Periodic status transmission. Replaced by e1 during arming delay, e2 near expira
 
 ### Display Values
 
-Characters mapped to hex codes (0x01-0x0F for 1-15, 0x11 for A, etc.)
+| Code | Display |
+|------|---------|
+| 0x01–0x10 | 1–16 |
+| 0x11 | A |
+| 0x12 | b ? |
+| 0x13 | C |
+| 0x14 | d |
+| 0x17 | U |
+| 0x1a | P |
+| 0x1c | L |
+| 0x1d | J |
+| 0x21–0x28 | c1–c8 |
+| 0x41 | 1 (alarm LED blinking) |
+| 0x53 | C (alarm LED blinking) |
+| 0x59 | empty / `,,` |
+| 0x5b | `-` |
+| 0x5e | `, ` |
+| 0x5f | ` ,` |
+| ? | H |
+| ? | F |
+| ? | E |
 
 ### Zero One or Two Field
 
