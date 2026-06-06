@@ -26,7 +26,9 @@ E3_SOURCES = {
 	0x00: 'panel',
 	0x01: 'detector_1',  0x02: 'detector_2',  0x03: 'detector_3',
 	0x11: 'keypad_1',
-	0x1b: 'phone',       0x1c: 'serial',       0x7c: 'serial_silent',
+	0x1b: 'phone',       0x1c: 'serial',
+	0x21: 'sensor_1',    0x22: 'sensor_2',
+	0x7c: 'serial_silent',
 }
 
 E9_EVENT_TYPES = {
