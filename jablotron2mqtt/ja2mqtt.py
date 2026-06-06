@@ -8,16 +8,25 @@ from jablotron.jablotron6x import RemoveDuplicities
 
 
 E3_EVENT_TYPES = {
-	0x04: 'silent_alarm',   0x05: 'tamper_alarm',  0x08: 'armed',
-	0x09: 'disarmed',       0x0e: 'exit_programming',
-	0x41: 'service_start',  0x42: 'service_end',
-	0x44: 'message_1',      0x46: 'message_2',     0x48: 'message_3',
-	0x50: 'tamper_ok',
+	0x04: 'silent_alarm',        0x05: 'tamper',              0x07: 'error',
+	0x08: 'armed',               0x09: 'disarmed',            0x0e: 'exit_programming',
+	0x11: 'battery_low',         0x12: 'phone_fault',         0x13: 'phone_ok',
+	0x41: 'service_start',       0x42: 'service_end',
+	0x44: 'msg_delivered_1',     0x45: 'msg_not_delivered_1',
+	0x46: 'msg_delivered_2',     0x47: 'msg_not_delivered_2',
+	0x48: 'msg_delivered_3',     0x49: 'msg_not_delivered_3',
+	0x4a: 'msg_delivered_4',     0x4b: 'msg_not_delivered_4',
+	0x4c: 'msg_delivered',       0x4d: 'msg_not_delivered',
+	0x4e: 'alarm_cancelled',     0x50: 'tamper_ok',
+	0x51: 'all_faults_cleared',  0x52: 'power_ok',
+	0x54: 'pco_fail',            0x58: 'pgxy_disabled',       0x59: 'power_outage',
 }
 
 E3_SOURCES = {
-	0x00: 'panel',   0x1b: 'phone',   0x1c: 'serial',
-	0x21: 'sensor_1', 0x22: 'sensor_2', 0x7c: 'serial_silent',
+	0x00: 'panel',
+	0x01: 'detector_1',  0x02: 'detector_2',  0x03: 'detector_3',
+	0x11: 'keypad_1',
+	0x1b: 'phone',       0x1c: 'serial',       0x7c: 'serial_silent',
 }
 
 E9_EVENT_TYPES = {
@@ -184,7 +193,7 @@ class Jablotron2mqtt(object):
 			self._parse_e6(buf)
 		elif buf[0] == 0xec:
 			self._parse_ec(buf)
-		elif buf[0] in (0xe3, 0xe7):
+		elif buf[0] in (0xe3, 0xe4, 0xe7):
 			self._parse_e3(buf)
 		elif buf[0] == 0xe9:
 			self._parse_e9(buf)
@@ -274,7 +283,8 @@ class Jablotron2mqtt(object):
 		source_name = E3_SOURCES.get(buf[6],    '0x%02x' % buf[6])
 		msg = "%s %s %02d.%02d %02d:%02d" % (event_name, source_name, day, month, hour, minute)
 		logging.debug("Event: %s", msg)
-		self.publish("event", msg)
+		topic = "event/history" if buf[0] == 0xe4 else "event"
+		self.publish(topic, msg)
 
 	def _parse_e9(self, buf):
 		# Format: [e9] [event_type] [source] [rf_signal] [checksum] [ff]
