@@ -35,7 +35,7 @@ LED_MAP = {
 # Operational mode mappings
 MODE_MAP = {
     0x00: 'service mode', 0x01: 'service mode', 0x03: 'service mode',
-    0x04: 'service mode', 0x06: 'service mode', 0x0A: 'service mode',
+    0x04: 'service mode', 0x06: 'service mode', 0x08: 'service mode', 0x0A: 'service mode',
     0x20: 'user mode', 0x23: 'user mode',
     0x40: 'disarmed',
     0x41: 'armed', 0x44: 'tamper alarm', 0x45: 'alarm', 0x49: 'entryDelay',

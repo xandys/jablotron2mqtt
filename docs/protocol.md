@@ -165,6 +165,7 @@ e2 is also used all the time during entry delay or when a silent alarm is fired.
 | 0x03  | 0000 0011      | service mode (keypress active) |
 | 0x04  | 0000 0100      | service mode (entering code/value) |
 | 0x06  | 0000 0110      | service mode (entering code, keypress active) |
+| 0x08  | 0000 1000      | service mode (transitional — seen during PCO phone number clear sequences) |
 | 0x0A  | 0000 1010      | service mode (transitional — seen during PCO enable/disable sequences) |
 | 0x20  | 0010 0000      | user mode                   |
 | 0x23  | 0010 0011      | user mode (keypress active) |
