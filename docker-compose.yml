@@ -32,6 +32,7 @@ services:
               TCP:$$WAVESHARE_HOST:$$WAVESHARE_PORT,retry,interval=5,forever &
         for i in $$(seq 1 30); do [ -e /dev/ttyRS485 ] && break; sleep 1; done
         [ -e /dev/ttyRS485 ] || { echo "PTY did not appear"; exit 1; }
+        export PYTHONPATH=/app
         exec python /app/jablotron2mqtt/main.py \
           --serial-port /dev/ttyRS485 \
           --host $$MQTT_HOST \
