@@ -161,9 +161,11 @@ e2 is also used all the time during entry delay or when a silent alarm is fired.
 | Value | Value (binary) | Mode                        |
 |-------|----------------|-----------------------------|
 | 0x00  | 0000 0000      | service mode                |
+| 0x01  | 0000 0001      | service mode (transitional — seen after PCO config keypad sequences) |
 | 0x03  | 0000 0011      | service mode (keypress active) |
 | 0x04  | 0000 0100      | service mode (entering code/value) |
 | 0x06  | 0000 0110      | service mode (entering code, keypress active) |
+| 0x0A  | 0000 1010      | service mode (transitional — seen during PCO enable/disable sequences) |
 | 0x20  | 0010 0000      | user mode                   |
 | 0x23  | 0010 0011      | user mode (keypress active) |
 | 0x40  | 0100 0000      | disarmed                    |
@@ -216,6 +218,7 @@ e2 is also used all the time during entry delay or when a silent alarm is fired.
 | 0x12      | b ?                            |
 | 0x13      | C                              |
 | 0x14      | d                              |
+| 0x16      | F (observed during F-key sequences in PCO programming) |
 | 0x17      | U                              |
 | 0x1a      | P                              |
 | 0x1c      | L                              |
