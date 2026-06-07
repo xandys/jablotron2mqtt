@@ -163,6 +163,7 @@ e2 is also used all the time during entry delay or when a silent alarm is fired.
 | 0x00  | 0000 0000      | service mode                |
 | 0x03  | 0000 0011      | service mode (keypress active) |
 | 0x04  | 0000 0100      | service mode (entering code/value) |
+| 0x06  | 0000 0110      | service mode (entering code, keypress active) |
 | 0x20  | 0010 0000      | user mode                   |
 | 0x23  | 0010 0011      | user mode (keypress active) |
 | 0x40  | 0100 0000      | disarmed                    |
@@ -194,6 +195,7 @@ e2 is also used all the time during entry delay or when a silent alarm is fired.
 
 | Value     | Content of display             |
 |-----------|--------------------------------|
+| 0x00      | (blank — during code entry)    |
 | 0x01      | 1                              |
 | 0x02      | 2                              |
 | 0x03      | 3                              |
